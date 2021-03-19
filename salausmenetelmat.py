@@ -29,12 +29,31 @@ def syt(a, b):
     
     return numero2
 
+
 def diofantoksen_yhtalo_ratkaisu(a, b, c):
-    if isinstance(c / syt(a, b), float):
+    
+    a1 = max(a, b)
+    b1 = min(a, b)
+    syt(1, 2)
+
+    if isinstance(c / 1, float):
         return False, False
 
-    syt
-    while syt 
+    jakojaannos = a % b
+    x = a // b
+    y = (a - x * b) * (-1)
+    
+    while jakojaannos != c:
+        a = b
+        b = jakojaannos
+        jakojaannos = a % b
+        x += a // b
+        y += (a - x * b) * (-1)
+
+    
+    return x, y
+
+         
     
 
 def alkulukuhajotelma():
@@ -66,7 +85,7 @@ def caesarin_yhteenlaskumenetelma(viesti, kieli, avain, decrypt=True):
 
     return kaannetty_viesti
 
-def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=True) {
+def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=True):
     if kieli == "FI":
         salaus = SALAUS_FI
     elif kieli == "EN":
@@ -88,12 +107,13 @@ def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=True) {
         kaannetty_viesti += salaus[numero]
 
 
-}
+
 
 
 
 
 if __name__ == "__main__":
-    print(caesarin_yhteenlaskumenetelma("TÄLTDEÄAXÄD", "FI", 19))
+    print(diofantoksen_yhtalo_ratkaisu(5, 13, 3))
+    print(syt(5, 13))
     
  
