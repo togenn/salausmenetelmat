@@ -32,25 +32,20 @@ def syt(a, b):
 
 def diofantoksen_yhtalo_ratkaisu(a, b, c):
     
-    a1 = max(a, b)
-    b1 = min(a, b)
-    syt(1, 2)
-
-    if isinstance(c / 1, float):
+    if c / syt(a, b) != c // syt(a, b):
         return False, False
 
     jakojaannos = a % b
-    x = a // b
-    y = (a - x * b) * (-1)
-    
-    while jakojaannos != c:
+    kertoimet = {jakojaannos: (a // b) * (-1)}
+
+    while jakojaannos != 1:
         a = b
         b = jakojaannos
         jakojaannos = a % b
-        x += a // b
-        y += (a - x * b) * (-1)
-
+        kertoime[jakojaannos] = (a // b) * (-1)
     
+      
+      
     return x, y
 
          
@@ -113,7 +108,8 @@ def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=True):
 
 
 if __name__ == "__main__":
-    print(diofantoksen_yhtalo_ratkaisu(5, 13, 3))
-    print(syt(5, 13))
+    print(diofantoksen_yhtalo_ratkaisu(1027, 712, 1))
+    print(syt(1027, 712))
+    
     
  
