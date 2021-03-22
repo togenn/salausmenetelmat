@@ -1,5 +1,3 @@
-import math
-
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
 SALAUS_FI = {}
@@ -13,12 +11,13 @@ for i, kirjain in enumerate(AAKKOSET_EN):
     SALAUS_EN[kirjain] = i
     SALAUS_EN[i] = kirjain
 
+
 def syt(a, b):
     """
     Palauttaa lukujen suurimman yhteisen tekijän.
-    """ 
+    """
     numero1 = max(a, b)
-    numero2 = min(a,b)
+    numero2 = min(a, b)
 
     jakojaannos = numero1 % numero2
 
@@ -26,35 +25,47 @@ def syt(a, b):
         numero1 = numero2
         numero2 = jakojaannos
         jakojaannos = numero1 % numero2
-    
+
     return numero2
 
 
 def diofantoksen_yhtalo_ratkaisu(a, b, c):
-    
+    """
+    Palauttaa erään ratkaisun yhtälölle ax+bx=c, missä a, b ja c ovat kokonaislukuja.
+    Jos yhtälöllä ei ole ratkaisua, palauttaa False, False.
+    """
     if c / syt(a, b) != c // syt(a, b):
         return False, False
 
     jakojaannos = a % b
-    kertoimet = {jakojaannos: (a // b) * (-1)}
+    bkertoimet = [a // b * -1]
 
-    while jakojaannos != 1:
+    while jakojaannos != c:
         a = b
         b = jakojaannos
         jakojaannos = a % b
-        kertoime[jakojaannos] = (a // b) * (-1)
-    
-      
-      
+        bkertoimet.append(a // b * -1)
+
+    bkertoimet.reverse()
+    i = 1
+    x = 1
+    y = bkertoimet[1]
+
+    while len(bkertoimet) - 1 > i:
+        kerroin_a = x
+        kerroin_b = y
+        x = kerroin_b
+        y = kerroin_b * bkertoimet[i] + kerroin_a
+        i += 1
+
     return x, y
 
-         
-    
 
 def alkulukuhajotelma():
     pass
 
-def caesarin_yhteenlaskumenetelma(viesti, kieli, avain, decrypt=True):
+
+def caesarin_yhteenlaskumenetelma(viesti, kieli, avain, decrypt=False):
     """
     Salaaa tai purkaa viestin caesarin yhteenlaskumenetelmällä.
     """
@@ -75,12 +86,13 @@ def caesarin_yhteenlaskumenetelma(viesti, kieli, avain, decrypt=True):
         else:
             numero = salaus[kirjain] - avain
 
-        numero = numero % (len(salaus) // 2) 
+        numero = numero % (len(salaus) // 2)
         kaannetty_viesti += salaus[numero]
 
     return kaannetty_viesti
 
-def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=True):
+
+def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=False):
     if kieli == "FI":
         salaus = SALAUS_FI
     elif kieli == "EN":
@@ -96,20 +108,26 @@ def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=True):
         if not decrypt:
             numero = salaus[kirjain] * avain
         else:
-            numero = salaus[kirjain] * avain
+            diofantoksen_yhtalo_ratkaisu(
+                avain, len(salaus) // 2 % avain, len(salaus) // 2
+            )
 
-        numero = numero % (len(salaus) // 2) 
+        numero = numero % (len(salaus) // 2)
         kaannetty_viesti += salaus[numero]
 
+    return kaannetty_viesti
 
 
+def kirjaimien_frekvenssi(viesti):
+    kirjaimet = {}
+    for kirjain in viesti:
+        # if kirjaimet.keys.
+        pass
 
 
+def yhteiset_kirjaimet():
+    pass
 
 
 if __name__ == "__main__":
     print(diofantoksen_yhtalo_ratkaisu(1027, 712, 1))
-    print(syt(1027, 712))
-    
-    
- 
