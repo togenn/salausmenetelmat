@@ -131,9 +131,22 @@ def caesarin_kertolaskumenetelma(viesti, kieli, avain, decrypt=False):
 
 def kirjaimien_frekvenssi(viesti):
     kirjaimet = {}
+    viesti = viesti.lower()
+    viesti = viesti.replace(" ", "")
     for kirjain in viesti:
-        # if kirjaimet.keys.
-        pass
+        if not kirjain in kirjaimet.keys():
+            kirjaimet[kirjain] = 1
+        else:
+            kirjaimet[kirjain] += 1
+
+    kirjaimet_jarjestetty = dict(
+        sorted(kirjaimet.items(), reverse=True, key=lambda arvo: arvo[1])
+    )
+    taulukko = ""
+    for kirjain in kirjaimet_jarjestetty:
+        taulukko += "{}: {}\n".format(kirjain, kirjaimet_jarjestetty[kirjain])
+
+    return taulukko
 
 
 def yhteiset_kirjaimet():
@@ -141,4 +154,4 @@ def yhteiset_kirjaimet():
 
 
 if __name__ == "__main__":
-    print(caesarin_kertolaskumenetelma("GAWXG", "EN", 21, True))
+    pass
