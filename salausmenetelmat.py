@@ -1,3 +1,6 @@
+import json
+import timeit
+
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
 SALAUS_FI = {}
@@ -94,7 +97,7 @@ def caesarin_yhteenlaskumenetelma(
 
     if brute_force:
         yritykset = []
-        for i in range(len(salaus) // 2):
+        for i in range(1, len(salaus) // 2):
             yritykset.append([caesarin_yhteenlaskumenetelma(viesti, kieli, i, True), i])
 
         taulukko = ""
@@ -135,7 +138,7 @@ def caesarin_kertolaskumenetelma(
 
     if brute_force:
         yritykset = []
-        for i in range(1, len(salaus) // 2):
+        for i in range(2, len(salaus) // 2):
             yritykset.append([caesarin_kertolaskumenetelma(viesti, kieli, i, True), i])
 
         taulukko = ""
@@ -146,7 +149,9 @@ def caesarin_kertolaskumenetelma(
 
     kaannetty_viesti = ""
     if decrypt:
-        kaanteisalkio = diofantoksen_yhtalo_ratkaisu(len(salaus) // 2, avain, 1)
+        if avain != 1:
+            kaanteisalkio = diofantoksen_yhtalo_ratkaisu(len(salaus) // 2, avain, 1)
+
         avain = kaanteisalkio[1]
 
     for i, kirjain in enumerate(viesti):
@@ -184,20 +189,78 @@ def kirjaimien_frekvenssi(viesti):
     return taulukko
 
 
-def affini_salaus(viesti, kieli, avain_a, avain_b, decrypt=False, brute_force=False):
+def affini_salaus(
+    viesti, kieli, avain_a=1, avain_b=1, decrypt=False, brute_force=False
+):
     """
     Salaa tai purkaa funktion affinilla järjestelmällä.
     Salausfunktio f(x) = x * avain_a + avain_b
+    Brute force purkamisen tulos tallentuu brute_force_tulos.txt tiedostoon.
     """
-    if not decrypt:
-        viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_a)
-        viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_b)
+    if not decrypt and not brute_force:
+        viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_a)
+        viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_b)
 
         return viesti
 
-    if brute_force:
-        pass
+    if not brute_force:
+        viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_b, True)
+        viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_a, True)
+
+        return viesti
+
+    taulukko = caesarin_yhteenlaskumenetelma(viesti, kieli, brute_force=True).split(
+        "\n"
+    )
+    taulukko.pop()
+
+    with open("brute_force_tulos.txt", "w") as tiedosto:
+
+        for rivi in taulukko:
+
+            yritys, yritys_avain_b = rivi.split()
+            kaannetty_taulukko = caesarin_kertolaskumenetelma(
+                yritys, kieli, brute_force=True
+            ).split("\n")
+            yritys_avain_b = yritys_avain_b.replace("avain=", "")
+            kaannetty_taulukko.pop()
+
+            for rivi2 in kaannetty_taulukko:
+                kaannetty_viesti, yritys_avain_a = rivi2.split()
+                yritys_avain_a = yritys_avain_a.replace("avain=", "")
+                tiedosto.write(
+                    "{} avain_a={} avain_b={}\n".format(
+                        kaannetty_viesti, yritys_avain_a, yritys_avain_b
+                    )
+                )
+
+
+def etsi_sanoja_tuloksesta():
+    # if kieli == "EN":
+    with open("words_dictionary.json") as sanat_tiedosto:
+        sanat = json.load(sanat_tiedosto)
+        with open("brute_force_tulos.txt", "r") as brute_force_tulos:
+
+            viesti, avain_a, avain_b = brute_force_tulos.readline().split()
+            while True:
+                loytyiko = False
+                pituus = len(viesti)
+                if pituus > 21:
+                    pituus = 21
+                for i in range(1, pituus):
+                    sana = viesti[0 : i + 1]
+                    if sana in sanat:
+                        loytyiko = True
+                        break
+                if loytyiko:
+                    print(viesti, "löytyi {}, {}".format(avain_a, avain_b), sana)
+
+                try:
+                    viesti, avain_a, avain_b = brute_force_tulos.readline().split()
+                except ValueError:
+                    return
 
 
 if __name__ == "__main__":
-    print(caesarin_kertolaskumenetelma("äieriyoaäa", "FI", 13, brute_force=1))
+    etsi_sanoja_tuloksesta()
+    print(timeit.timeit(etsi_sanoja_tuloksesta, number=1))
