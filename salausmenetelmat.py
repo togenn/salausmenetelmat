@@ -124,10 +124,10 @@ def caesarin_yhteenlaskumenetelma(
 
 
 def caesarin_kertolaskumenetelma(
-    viesti, kieli, avain=1, decrypt=False, brute_force=False
+    viesti, kieli, avain=2, decrypt=False, brute_force=False
 ):
     """
-    Salaa tai purkaa viestin caesarin kertolaskumenetelmällä.
+    Salaa tai purkaa viestin caesarin kertolaskumenetelmällä. Viestiä avatessa avain ei saa olla jaollinen aakkosten määrällä.
     Salausfunktio f(x) = x * avain
     """
     if kieli == "FI":
@@ -139,6 +139,9 @@ def caesarin_kertolaskumenetelma(
     if brute_force:
         yritykset = []
         for i in range(2, len(salaus) // 2):
+            if syt(len(salaus) // 2, i) != 1:
+                continue
+            
             yritykset.append([caesarin_kertolaskumenetelma(viesti, kieli, i, True), i])
 
         taulukko = ""
@@ -149,12 +152,12 @@ def caesarin_kertolaskumenetelma(
 
     kaannetty_viesti = ""
     if decrypt:
-        if avain != 1:
-            kaanteisalkio = diofantoksen_yhtalo_ratkaisu(len(salaus) // 2, avain, 1)
+        if syt(len(salaus) // 2, avain) != 1:
+            return "Viestiä avatessa avain ei saa olla jaollinen aakkosten määrällä"
 
-        avain = kaanteisalkio[1]
+        avain = diofantoksen_yhtalo_ratkaisu(len(salaus) // 2, avain, 1)[1]
 
-    for i, kirjain in enumerate(viesti):
+    for kirjain in viesti:
         if kirjain == " ":
             kaannetty_viesti += " "
             continue
@@ -262,5 +265,5 @@ def etsi_sanoja_tuloksesta():
 
 
 if __name__ == "__main__":
-    etsi_sanoja_tuloksesta()
-    print(timeit.timeit(etsi_sanoja_tuloksesta, number=1))
+    
+    print(caesarin_kertolaskumenetelma("bqjuzbzqnz", "EN", brute_force=True))
