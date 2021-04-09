@@ -1,5 +1,4 @@
 import json
-import timeit
 
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
@@ -17,10 +16,13 @@ for i, kirjain in enumerate(AAKKOSET_EN):
 
 def syt(a, b):
     """
-    Palauttaa kahden erisuure numeron yhteisen tekijän.
+    Palauttaa kahden numeron suurimman yhteisen tekijän.
     """
     numero1 = max(a, b)
     numero2 = min(a, b)
+
+    if numero2 == 0:
+        return 0
 
     jakojaannos = numero1 % numero2
 
@@ -34,13 +36,11 @@ def syt(a, b):
 
 def diofantoksen_yhtalo_ratkaisu(a, b, c):
     """
-    Palauttaa erään ratkaisun yhtälölle ax+by=c, missä a, b ja c ovat nollasta eroavia kokonaislukuja ja  a ja b eivä ole keskenään jaollisia.
-    Jos yhtälöllä ei ole ratkaisua tai yhtälö ei täytä ehtoja, niin se palauttaa False, False.
+    Palauttaa erään ratkaisun yhtälölle ax+by=c , missä a ja b ovat nollasta eroavia kokonaislukuja ja c = syt(a, b):n monikerta.
+    Jos yhtälöllä ei ole ratkaisua tai yhtälö ei täytä ehtoja, niin se palauttaa (None, None).
     """
     syt_ab = syt(a, b)
-    if c / syt_ab != c // syt_ab:
-        return False, False
-
+    c = c // syt_ab
     if b > a:
         kaanna = True
     else:
@@ -51,12 +51,12 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
     b = min(apu, b)
 
     if a % b == 0:
-        return False, False
+        return None, None
 
     jakojaannos = a % b
     bkertoimet = [a // b * -1]
 
-    while jakojaannos != 1:
+    while jakojaannos != syt_ab:
         a = b
         b = jakojaannos
         jakojaannos = a % b
@@ -82,29 +82,47 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
     return c * x, c * y
 
 
-def caesarin_yhteenlaskumenetelma(
-    viesti, kieli, avain=1, decrypt=False, brute_force=False
-):
+def muuta_numerot_kirjaimeksi(numerot, kieli):
+    if kieli == "EN":
+        salaus = SALAUS_EN
+    elif kieli == "FI":
+        salaus = SALAUS_FI
+
+    palautus = ""
+    for nro in numerot:
+        numero = nro % (len(salaus) // 2)
+        palautus += salaus[numero]
+
+    return palautus
+
+
+def muuta_viesti_numeroiksi(viesti, kieli):
+    if kieli == "EN":
+        salaus = SALAUS_EN
+    elif kieli == "FI":
+        salaus = SALAUS_FI
+
+    palautus = []
+    for kirjain in viesti:
+        palautus.append(salaus[kirjain])
+
+    return palautus
+
+
+def valitse_kieli(kieli):
+    if kieli == "FI":
+        return SALAUS_FI
+    elif kieli == "EN":
+        return SALAUS_EN
+
+
+def caesarin_yhteenlaskumenetelma(viesti, kieli, avain=1, decrypt=False):
     """
     Salaaa tai purkaa viestin caesarin yhteenlaskumenetelmällä.
     Salausfunkktio f(x) = x + avain
     """
-    if kieli == "FI":
-        salaus = SALAUS_FI
-    elif kieli == "EN":
-        salaus = SALAUS_EN
+    salaus = valitse_kieli(kieli)
     viesti = viesti.lower()
-
-    if brute_force:
-        yritykset = []
-        for i in range(1, len(salaus) // 2):
-            yritykset.append([caesarin_yhteenlaskumenetelma(viesti, kieli, i, True), i])
-
-        taulukko = ""
-        for i in yritykset:
-            taulukko += "{} avain={}\n".format(i[0], i[1])
-
-        return taulukko
 
     kaannetty_viesti = ""
     for i, kirjain in enumerate(viesti):
@@ -114,7 +132,7 @@ def caesarin_yhteenlaskumenetelma(
 
         if not decrypt:
             numero = salaus[kirjain] + avain
-        elif not brute_force:
+        else:
             numero = salaus[kirjain] - avain
 
         numero = numero % (len(salaus) // 2)
@@ -123,36 +141,38 @@ def caesarin_yhteenlaskumenetelma(
     return kaannetty_viesti
 
 
-def caesarin_kertolaskumenetelma(
-    viesti, kieli, avain=1, decrypt=False, brute_force=False
-):
+def caesarin_yhteenlaskumenetelma_brute_force(viesti, kieli):
+    salaus = valitse_kieli(kieli)
+    viesti = viesti.lower()
+
+    yritykset = []
+    for i in range(len(salaus) // 2):
+        yritykset.append([caesarin_yhteenlaskumenetelma(viesti, kieli, i, True), i])
+
+    taulukko = ""
+    for i in yritykset:
+        taulukko += "{} avain={}\n".format(i[0], i[1])
+
+    return taulukko
+
+
+def caesarin_kertolaskumenetelma(viesti, kieli, avain=1, decrypt=False):
     """
     Salaa tai purkaa viestin caesarin kertolaskumenetelmällä.
     Salausfunktio f(x) = x * avain
     """
-    if kieli == "FI":
-        salaus = SALAUS_FI
-    elif kieli == "EN":
-        salaus = SALAUS_EN
+    salaus = valitse_kieli(kieli)
     viesti = viesti.lower()
-
-    if brute_force:
-        yritykset = []
-        for i in range(2, len(salaus) // 2):
-            yritykset.append([caesarin_kertolaskumenetelma(viesti, kieli, i, True), i])
-
-        taulukko = ""
-        for i in yritykset:
-            taulukko += "{} avain={}\n".format(i[0], i[1])
-
-        return taulukko
 
     kaannetty_viesti = ""
     if decrypt:
-        if avain != 1:
-            kaanteisalkio = diofantoksen_yhtalo_ratkaisu(len(salaus) // 2, avain, 1)
 
-        avain = kaanteisalkio[1]
+        if syt(avain, len(salaus) // 2) != 1:
+            return None
+
+        if avain > 1:
+            kaanteisalkio = diofantoksen_yhtalo_ratkaisu(len(salaus) // 2, avain, 1)
+            avain = kaanteisalkio[1]
 
     for i, kirjain in enumerate(viesti):
         if kirjain == " ":
@@ -164,6 +184,24 @@ def caesarin_kertolaskumenetelma(
         kaannetty_viesti += salaus[numero]
 
     return kaannetty_viesti
+
+
+def caesarin_kertolaskumenetelma_brute_force(viesti, kieli):
+    salaus = valitse_kieli(kieli)
+    viesti = viesti.lower()
+
+    yritykset = []
+    for i in range(1, len(salaus) // 2):
+        if syt(i, len(salaus) // 2) != 1:
+            continue
+
+        yritykset.append([caesarin_kertolaskumenetelma(viesti, kieli, i, True), i])
+
+    taulukko = ""
+    for i in yritykset:
+        taulukko += "{} avain={}\n".format(i[0], i[1])
+
+    return taulukko
 
 
 def kirjaimien_frekvenssi(viesti):
@@ -189,29 +227,30 @@ def kirjaimien_frekvenssi(viesti):
     return taulukko
 
 
-def affini_salaus(
-    viesti, kieli, avain_a=1, avain_b=1, decrypt=False, brute_force=False
-):
+def affini_salaus(viesti, kieli, avain_a=1, avain_b=1, decrypt=False):
     """
     Salaa tai purkaa funktion affinilla järjestelmällä.
     Salausfunktio f(x) = x * avain_a + avain_b
-    Brute force purkamisen tulos tallentuu brute_force_tulos.txt tiedostoon.
     """
-    if not decrypt and not brute_force:
+    if not decrypt:
         viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_a)
         viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_b)
 
         return viesti
 
-    if not brute_force:
-        viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_b, True)
-        viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_a, True)
+    viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_b, True)
+    viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_a, True)
 
-        return viesti
+    return viesti
 
-    taulukko = caesarin_yhteenlaskumenetelma(viesti, kieli, brute_force=True).split(
-        "\n"
-    )
+
+def affini_salaus_brute_force(viesti, kieli):
+    """
+    Brute force purkamisen tulos tallentuu brute_force_tulos.txt tiedostoon.
+    """
+    viesti = viesti.replace(" ", "")
+
+    taulukko = caesarin_yhteenlaskumenetelma_brute_force(viesti, kieli).split("\n")
     taulukko.pop()
 
     with open("brute_force_tulos.txt", "w") as tiedosto:
@@ -219,8 +258,8 @@ def affini_salaus(
         for rivi in taulukko:
 
             yritys, yritys_avain_b = rivi.split()
-            kaannetty_taulukko = caesarin_kertolaskumenetelma(
-                yritys, kieli, brute_force=True
+            kaannetty_taulukko = caesarin_kertolaskumenetelma_brute_force(
+                yritys, kieli
             ).split("\n")
             yritys_avain_b = yritys_avain_b.replace("avain=", "")
             kaannetty_taulukko.pop()
@@ -235,32 +274,57 @@ def affini_salaus(
                 )
 
 
-def etsi_sanoja_tuloksesta():
-    # if kieli == "EN":
-    with open("words_dictionary.json") as sanat_tiedosto:
+def etsi_sanoja_tuloksesta(kieli):
+    if kieli == "EN":
+        tiedosto = "sanalista_EN.json"
+    elif kieli == "FI":
+        tiedosto = "sanalista_FI.json"
+
+    with open(tiedosto) as sanat_tiedosto:
         sanat = json.load(sanat_tiedosto)
         with open("brute_force_tulos.txt", "r") as brute_force_tulos:
-
-            viesti, avain_a, avain_b = brute_force_tulos.readline().split()
+            taulukko = ""
             while True:
-                loytyiko = False
-                pituus = len(viesti)
-                if pituus > 21:
-                    pituus = 21
-                for i in range(1, pituus):
-                    sana = viesti[0 : i + 1]
-                    if sana in sanat:
-                        loytyiko = True
-                        break
-                if loytyiko:
-                    print(viesti, "löytyi {}, {}".format(avain_a, avain_b), sana)
-
                 try:
                     viesti, avain_a, avain_b = brute_force_tulos.readline().split()
                 except ValueError:
-                    return
+                    if not taulukko:
+                        taulukko += "Ei tuloksia"
+
+                    return taulukko
+
+                pituus = len(viesti)
+
+                if pituus > 21:
+                    pituus = 21
+
+                for i in range(1, pituus + 1):
+                    sana = viesti[0:i]
+                    if sana in sanat:
+                        print(sana)
+                        break
+                else:
+                    continue
+
+                for j in range(1, pituus + 1):
+                    sana2 = viesti[len(viesti) - j : len(viesti)]
+
+                    if sana2 in sanat:
+                        break
+                else:
+                    continue
+
+                taulukko += "{}, löytyi {}, {}\n".format(viesti, avain_a, avain_b)
 
 
 if __name__ == "__main__":
-    etsi_sanoja_tuloksesta()
-    print(timeit.timeit(etsi_sanoja_tuloksesta, number=1))
+    # print(SALAUS_EN)
+    # print(muuta_numero_kirjaimeksi(447, "FI"))
+
+    # print(muuta_viesti_numeroiksi("aerodynamics", "EN"))
+    # print(muuta_numerot_kirjaimeksi([0, 23, 13, 14, 24], "EN"))
+
+    # rint(diofantoksen_yhtalo_ratkaisu(217, 20, 1))
+    # print(syt(213, 89))
+
+    print(etsi_sanoja_tuloksesta("FI"))
