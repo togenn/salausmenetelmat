@@ -158,7 +158,7 @@ def caesarin_yhteenlaskumenetelma_brute_force(viesti, kieli):
 
 def caesarin_kertolaskumenetelma(viesti, kieli, avain=1, decrypt=False):
     """
-    Salaa tai purkaa viestin caesarin kertolaskumenetelmällä.
+    Salaa tai purkaa viestin caesarin kertolaskumenetelmällä. Viestiä avatessa avain ei saa olla jaollinen aakkosten määrällä.
     Salausfunktio f(x) = x * avain
     """
     salaus = valitse_kieli(kieli)
@@ -174,7 +174,7 @@ def caesarin_kertolaskumenetelma(viesti, kieli, avain=1, decrypt=False):
             kaanteisalkio = diofantoksen_yhtalo_ratkaisu(len(salaus) // 2, avain, 1)
             avain = kaanteisalkio[1]
 
-    for i, kirjain in enumerate(viesti):
+    for kirjain in viesti:
         if kirjain == " ":
             kaannetty_viesti += " "
             continue
