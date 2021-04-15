@@ -1,4 +1,5 @@
 import json
+import collections as col
 
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
@@ -82,11 +83,8 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
     return c * x, c * y
 
 
-def muuta_numerot_kirjaimeksi(numerot, kieli):
-    if kieli == "EN":
-        salaus = SALAUS_EN
-    elif kieli == "FI":
-        salaus = SALAUS_FI
+def muuta_numerot_kirjaimiksi(numerot, kieli):
+    salaus = valitse_kieli(kieli)
 
     palautus = ""
     for nro in numerot:
@@ -97,10 +95,8 @@ def muuta_numerot_kirjaimeksi(numerot, kieli):
 
 
 def muuta_viesti_numeroiksi(viesti, kieli):
-    if kieli == "EN":
-        salaus = SALAUS_EN
-    elif kieli == "FI":
-        salaus = SALAUS_FI
+    salaus = valitse_kieli(kieli)
+    viesti = viesti.lower()
 
     palautus = []
     for kirjain in viesti:
@@ -109,19 +105,26 @@ def muuta_viesti_numeroiksi(viesti, kieli):
     return palautus
 
 
-def valitse_kieli(kieli):
-    if kieli == "FI":
+def valitse_aakkoset(aakkoset):
+    if aakkoset == "FI":
         return SALAUS_FI
-    elif kieli == "EN":
+    elif aakkoset == "EN":
         return SALAUS_EN
+    else:
+        salaus = {}
+        for i, kirjain in enumerate(aakkoset):
+            salaus[i] = kirjain
+            salaus[kirjain] = i
+
+        return salaus
 
 
-def caesarin_yhteenlaskumenetelma(viesti, kieli, avain=1, decrypt=False):
+def caesarin_yhteenlaskumenetelma(viesti, avain, aakkoset, decrypt=False):
     """
     Salaaa tai purkaa viestin caesarin yhteenlaskumenetelmällä.
     Salausfunkktio f(x) = x + avain
     """
-    salaus = valitse_kieli(kieli)
+    salaus = valitse_aakkoset(aakkoset)
     viesti = viesti.lower()
 
     kaannetty_viesti = ""
@@ -141,8 +144,8 @@ def caesarin_yhteenlaskumenetelma(viesti, kieli, avain=1, decrypt=False):
     return kaannetty_viesti
 
 
-def caesarin_yhteenlaskumenetelma_brute_force(viesti, kieli):
-    salaus = valitse_kieli(kieli)
+def caesarin_yhteenlaskumenetelma_brute_force(viesti, aakkoset):
+    salaus = valitse_aakkoset(aakkoset)
     viesti = viesti.lower()
 
     yritykset = []
@@ -156,12 +159,12 @@ def caesarin_yhteenlaskumenetelma_brute_force(viesti, kieli):
     return taulukko
 
 
-def caesarin_kertolaskumenetelma(viesti, kieli, avain=1, decrypt=False):
+def caesarin_kertolaskumenetelma(viesti, avain, aakkoset, decrypt=False):
     """
     Salaa tai purkaa viestin caesarin kertolaskumenetelmällä. Viestiä avatessa avain ei saa olla jaollinen aakkosten määrällä.
     Salausfunktio f(x) = x * avain
     """
-    salaus = valitse_kieli(kieli)
+    valitse_aakkoset(aakkoset)
     viesti = viesti.lower()
 
     kaannetty_viesti = ""
@@ -186,8 +189,8 @@ def caesarin_kertolaskumenetelma(viesti, kieli, avain=1, decrypt=False):
     return kaannetty_viesti
 
 
-def caesarin_kertolaskumenetelma_brute_force(viesti, kieli):
-    salaus = valitse_kieli(kieli)
+def caesarin_kertolaskumenetelma_brute_force(viesti, aakkoset):
+    salaus = valitse_aakkoset("")
     viesti = viesti.lower()
 
     yritykset = []
@@ -284,6 +287,7 @@ def etsi_sanoja_tuloksesta(kieli):
         sanat = json.load(sanat_tiedosto)
         with open("brute_force_tulos.txt", "r") as brute_force_tulos:
             taulukko = ""
+
             while True:
                 try:
                     viesti, avain_a, avain_b = brute_force_tulos.readline().split()
@@ -301,7 +305,6 @@ def etsi_sanoja_tuloksesta(kieli):
                 for i in range(1, pituus + 1):
                     sana = viesti[0:i]
                     if sana in sanat:
-                        print(sana)
                         break
                 else:
                     continue
@@ -317,14 +320,90 @@ def etsi_sanoja_tuloksesta(kieli):
                 taulukko += "{}, löytyi {}, {}\n".format(viesti, avain_a, avain_b)
 
 
+def maaraa_aakkoset(avainsana, siirto, kieli):
+    """
+    Avainsanasta poistetaan toistuvat kirjaimet. Avainsana sijoitetaan aakkosiin siten, että se alkaa indeksistä siirto.
+    Tämän jälkeen sijoitetaan jäljellä olevat aakkoset järjestyksessä eteenpäin.
+    Esim avainsana=aasi, kieli=FI, ja siirto=4:
+    zåäöasibcdefghjklmnopqrtuvwxy
+
+    """
+    if kieli == "EN":
+        aakkoset = AAKKOSET_EN
+    elif kieli == "FI":
+        aakkoset = AAKKOSET_FI
+
+    avainsana = avainsana.lower().replace(" ", "")
+
+    poistettavat = []
+    for kirjain in avainsana:
+        if kirjain not in poistettavat:
+            poistettavat.append(kirjain)
+
+    kirjaimien_maara = len(aakkoset)
+    for kirjain in poistettavat:
+        aakkoset = aakkoset.replace(kirjain, "")
+
+    poistettavat.extend(aakkoset)
+
+    uusi_salaus = {}
+    for i, kirjain in enumerate(poistettavat):
+        uusi_salaus[(i + siirto) % kirjaimien_maara] = kirjain
+        uusi_salaus[kirjain] = (i + siirto) % kirjaimien_maara
+
+    return uusi_salaus
+    """
+    aakkoset = aakkoset[kirjaimien_maara :siirto].extend(poistettavat).extend(aakkoset[siirto + len(avainsana):])
+    aakkoset = iter(aakkoset)
+    pituus_poistettavat = len(poistettavat)
+    poistettavat = iter(poistettavat)
+    uusi_salaus = {}
+    for i in range(kirjaimien_maara):
+        if i < siirto or i >= siirto + pituus_poistettavat:
+            seuraava_aakkkonen = next(aakkoset)
+            uusi_salaus[i] = seuraava_aakkkonen
+            uusi_salaus[seuraava_aakkkonen] = i
+        else:
+            seuraava_poistettava = next(poistettavat)
+            uusi_salaus[i] = seuraava_poistettava
+            uusi_salaus[seuraava_poistettava] = i
+
+    return uusi_salaus
+    """
+
+
+def caesarin_yhteenlaskumenetelma_avainsanalla(
+    viesti, avain, avainsana, siirto, kieli, decrypt=False
+):
+    return caesarin_yhteenlaskumenetelma(
+        viesti, avain, maaraa_aakkoset(avainsana, siirto, kieli), decrypt
+    )
+
+
+def caesarin_yhteenlaskumenetelma_avainsanalla_brute_force(
+    viesti, avainsana, siirto, kieli
+):
+    return caesarin_yhteenlaskumenetelma_brute_force(
+        viesti, aaraa_aakkoset(avainsana, siirto, kieli)
+    )
+
+
+def caesarin_kertolaskumenetelma_avainsanalla():
+    return caesarin_kertolaskumenetelma(
+        viesti, avain, maaraa_aakkoset(avainsana, siirto, kieli), decrypt
+    )
+
+
+def caesarin_kertolaskumenetelma_avainsanalla_brute_force():
+    return caesarin_kertolaskumenetelma_brute_force(
+        viesti, maaraa_aakkoset(avainsana, siirto, kieli)
+    )
+
+
+def affini_salaus_avainsanalla():
+    pass
+
+
 if __name__ == "__main__":
-    # print(SALAUS_EN)
-    # print(muuta_numero_kirjaimeksi(447, "FI"))
-
-    # print(muuta_viesti_numeroiksi("aerodynamics", "EN"))
-    # print(muuta_numerot_kirjaimeksi([0, 23, 13, 14, 24], "EN"))
-
-    # rint(diofantoksen_yhtalo_ratkaisu(217, 20, 1))
-    # print(syt(213, 89))
-
-    print(etsi_sanoja_tuloksesta("FI"))
+    # TODO tarkista toimiiko määrä_aakkoset
+    print(maaraa_aakkoset("kesä meni", 3, "FI"))
