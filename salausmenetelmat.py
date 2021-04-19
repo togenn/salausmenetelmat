@@ -1,5 +1,6 @@
-import json
-import collections as col
+from json import load
+from textwrap import wrap
+from itertools import product
 
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
@@ -84,7 +85,7 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
 
 
 def muuta_numerot_kirjaimiksi(numerot, kieli):
-    salaus = valitse_kieli(kieli)
+    salaus = valitse_aakkoset(kieli)
 
     palautus = ""
     for nro in numerot:
@@ -95,7 +96,7 @@ def muuta_numerot_kirjaimiksi(numerot, kieli):
 
 
 def muuta_viesti_numeroiksi(viesti, kieli):
-    salaus = valitse_kieli(kieli)
+    salaus = valitse_aakkoset(kieli)
     viesti = viesti.lower()
 
     palautus = []
@@ -230,30 +231,30 @@ def kirjaimien_frekvenssi(viesti):
     return taulukko
 
 
-def affini_salaus(viesti, kieli, avain_a=1, avain_b=1, decrypt=False):
+def affini_salaus(viesti, aakkoset, avain_a=1, avain_b=1, decrypt=False):
     """
     Salaa tai purkaa funktion affinilla järjestelmällä.
     Salausfunktio f(x) = x * avain_a + avain_b
     """
     if not decrypt:
-        viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_a)
-        viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_b)
+        viesti = caesarin_kertolaskumenetelma(viesti, avain_a, aakkoset)
+        viesti = caesarin_yhteenlaskumenetelma(viesti, avain_b, aakkoset)
 
         return viesti
 
-    viesti = caesarin_yhteenlaskumenetelma(viesti, kieli, avain_b, True)
-    viesti = caesarin_kertolaskumenetelma(viesti, kieli, avain_a, True)
+    viesti = caesarin_yhteenlaskumenetelma(viesti, avain_b, aakkoset, True)
+    viesti = caesarin_kertolaskumenetelma(viesti, avain_a, aakkoset, True)
 
     return viesti
 
 
-def affini_salaus_brute_force(viesti, kieli):
+def affini_salaus_brute_force(viesti, aakkoset):
     """
     Brute force purkamisen tulos tallentuu brute_force_tulos.txt tiedostoon.
     """
     viesti = viesti.replace(" ", "")
 
-    taulukko = caesarin_yhteenlaskumenetelma_brute_force(viesti, kieli).split("\n")
+    taulukko = caesarin_yhteenlaskumenetelma_brute_force(viesti, aakkoset).split("\n")
     taulukko.pop()
 
     with open("brute_force_tulos.txt", "w") as tiedosto:
@@ -262,7 +263,7 @@ def affini_salaus_brute_force(viesti, kieli):
 
             yritys, yritys_avain_b = rivi.split()
             kaannetty_taulukko = caesarin_kertolaskumenetelma_brute_force(
-                yritys, kieli
+                yritys, aakkoset
             ).split("\n")
             yritys_avain_b = yritys_avain_b.replace("avain=", "")
             kaannetty_taulukko.pop()
@@ -277,6 +278,10 @@ def affini_salaus_brute_force(viesti, kieli):
                 )
 
 
+def onko_sana(sana, kieli):
+    pass
+
+
 def etsi_sanoja_tuloksesta(kieli):
     if kieli == "EN":
         tiedosto = "sanalista_EN.json"
@@ -284,7 +289,7 @@ def etsi_sanoja_tuloksesta(kieli):
         tiedosto = "sanalista_FI.json"
 
     with open(tiedosto) as sanat_tiedosto:
-        sanat = json.load(sanat_tiedosto)
+        sanat = load(sanat_tiedosto)
         with open("brute_force_tulos.txt", "r") as brute_force_tulos:
             taulukko = ""
 
@@ -321,89 +326,131 @@ def etsi_sanoja_tuloksesta(kieli):
 
 
 def maaraa_aakkoset(avainsana, siirto, kieli):
-    """
-    Avainsanasta poistetaan toistuvat kirjaimet. Avainsana sijoitetaan aakkosiin siten, että se alkaa indeksistä siirto.
-    Tämän jälkeen sijoitetaan jäljellä olevat aakkoset järjestyksessä eteenpäin.
-    Esim avainsana=aasi, kieli=FI, ja siirto=4:
-    zåäöasibcdefghjklmnopqrtuvwxy
-
-    """
     if kieli == "EN":
         aakkoset = AAKKOSET_EN
     elif kieli == "FI":
         aakkoset = AAKKOSET_FI
 
     avainsana = avainsana.lower().replace(" ", "")
-
+    kirjaimien_maara = len(aakkoset)
     poistettavat = []
     for kirjain in avainsana:
         if kirjain not in poistettavat:
             poistettavat.append(kirjain)
-
-    kirjaimien_maara = len(aakkoset)
-    for kirjain in poistettavat:
-        aakkoset = aakkoset.replace(kirjain, "")
+            aakkoset = aakkoset.replace(kirjain, "")
 
     poistettavat.extend(aakkoset)
-
-    uusi_salaus = {}
-    for i, kirjain in enumerate(poistettavat):
-        uusi_salaus[(i + siirto) % kirjaimien_maara] = kirjain
-        uusi_salaus[kirjain] = (i + siirto) % kirjaimien_maara
+    uusi_salaus = [None] * kirjaimien_maara
+    for i, kirjain in enumerate(poistettavat, siirto):
+        uusi_salaus[i % kirjaimien_maara] = kirjain
 
     return uusi_salaus
+
+
+def caesar_avainsanalla(viesti, avainsana, siirto, kieli, decrypt=False):
     """
-    aakkoset = aakkoset[kirjaimien_maara :siirto].extend(poistettavat).extend(aakkoset[siirto + len(avainsana):])
-    aakkoset = iter(aakkoset)
-    pituus_poistettavat = len(poistettavat)
-    poistettavat = iter(poistettavat)
-    uusi_salaus = {}
-    for i in range(kirjaimien_maara):
-        if i < siirto or i >= siirto + pituus_poistettavat:
-            seuraava_aakkkonen = next(aakkoset)
-            uusi_salaus[i] = seuraava_aakkkonen
-            uusi_salaus[seuraava_aakkkonen] = i
-        else:
-            seuraava_poistettava = next(poistettavat)
-            uusi_salaus[i] = seuraava_poistettava
-            uusi_salaus[seuraava_poistettava] = i
+    Avainsanasta poistetaan toistuvat kirjaimet. Avainsana sijoitetaan aakkosiin siten, että se alkaa indeksistä siirto.
+    Tämän jälkeen sijoitetaan jäljellä olevat aakkoset järjestyksessä eteenpäin. Viesti salataan vertaamalla aakkosen indeksiä vastaavaan kirjaimeen uusissa aakkosissa.
+    Esim avainsana=aasi, kieli=FI, ja siirto=4:
+    zåäöasibcdefghjklmnopqrtuvwxy
 
-    return uusi_salaus
     """
+    aakkoset = valitse_aakkoset(kieli)
+    salaus = maaraa_aakkoset(avainsana, siirto, kieli)
+    viesti = viesti.lower().replace(" ", "")
+    muunnettu_viesti = ""
+
+    if not decrypt:
+        for kirjain in viesti:
+            kirjaimen_indeksi = aakkoset[kirjain]
+            muunnettu_viesti += salaus[kirjaimen_indeksi]
+    else:
+        for kirjain in viesti:
+            kirjaimen_indeksi = salaus.index(kirjain)
+            muunnettu_viesti += aakkoset[kirjaimen_indeksi]
+
+    return muunnettu_viesti
 
 
-def caesarin_yhteenlaskumenetelma_avainsanalla(
-    viesti, avain, avainsana, siirto, kieli, decrypt=False
-):
-    return caesarin_yhteenlaskumenetelma(
-        viesti, avain, maaraa_aakkoset(avainsana, siirto, kieli), decrypt
-    )
+def vigeneren_salaus(viesti, salasana, aakkoset, decrypt=False):
+    """
+    Jakaa viestin len(salasana):n pituisiin osiin ja salaa jokaisen osan kirjaimen sitä vastaavan salasanan kirjaimen vastaavalla numerolla.
+    Esim.
+    salasana=orsi viesti=iltapimenee aakkoset = FI
+    ilta|pime|nee
+     08 11 19 00|15 08 12 04|13 04 04
+    +14 17 18 08|14 17 18 08|14 17 18
+    = 22 28 8 8 0 25 01 12 27 21 22
+    W Ö I I A Z B M Ä V W
+    """
+    salaus = valitse_aakkoset(aakkoset)
+    viesti = viesti.lower().replace(" ", "")
+    avaimet = []
+    for kirjain in salasana:
+        avaimet.append(salaus[kirjain])
+
+    pilkottu_viesti = wrap(viesti, len(salasana))
+
+    muunnettu_viesti = ""
+    for osa in pilkottu_viesti:
+        for i, kirjain in enumerate(osa):
+            muunnettu_viesti += caesarin_yhteenlaskumenetelma(
+                kirjain, avaimet[i], aakkoset, decrypt
+            )
+
+    return muunnettu_viesti
 
 
-def caesarin_yhteenlaskumenetelma_avainsanalla_brute_force(
-    viesti, avainsana, siirto, kieli
-):
-    return caesarin_yhteenlaskumenetelma_brute_force(
-        viesti, aaraa_aakkoset(avainsana, siirto, kieli)
-    )
+def vigeneren_salaus_brute_force(viesti, kieli):
+    """
+    Yrittää löytää kokeilemalla salasanan, jolla viestin alusta ja lopusta löytyisi sana.
+    Tallentaa tulokset vigenere_brute_force.txt tiedostoon.
+    """
+    if kieli == "FI":
+        aakkoset = AAKKOSET_FI
+        tiedosto = "sanalista_FI.json"
+    elif kieli == "EN":
+        aakkoset = AAKKOSET_EN
+        tiedosto = "sanalista_EN.json"
+    else:
+        raise ValueError("virheellinen kieli")
 
+    viesti = viesti.lower().replace(" ", "")
+    with open("vigenere_brute_force.txt", "w") as tulos:
+        with open(tiedosto) as sanat_tiedosto:
+            sanat = load(sanat_tiedosto)
 
-def caesarin_kertolaskumenetelma_avainsanalla():
-    return caesarin_kertolaskumenetelma(
-        viesti, avain, maaraa_aakkoset(avainsana, siirto, kieli), decrypt
-    )
+            for pituus in range(1, len(viesti) + 1):
+                for yhdistelma in product(aakkoset, repeat=pituus):
+                    salasana = "".join(yhdistelma)
+                    yritys = vigeneren_salaus(viesti, salasana, kieli, True)
+                    pituus = len(yritys)
 
+                    if pituus > 21:
+                        pituus = 21
 
-def caesarin_kertolaskumenetelma_avainsanalla_brute_force():
-    return caesarin_kertolaskumenetelma_brute_force(
-        viesti, maaraa_aakkoset(avainsana, siirto, kieli)
-    )
+                    for i in range(1, pituus + 1):
+                        sana = yritys[0:i]
+                        if sana in sanat:
+                            break
+                    else:
+                        continue
 
+                    for j in range(1, pituus + 1):
+                        sana2 = yritys[len(viesti) - j : len(viesti)]
 
-def affini_salaus_avainsanalla():
-    pass
+                        if sana2 in sanat:
+                            break
+                    else:
+                        continue
+
+                    tulos.write(
+                        "{} {}\n".format(
+                            vigeneren_salaus(viesti, salasana, kieli, True), salasana
+                        )
+                    )
 
 
 if __name__ == "__main__":
-    # TODO tarkista toimiiko määrä_aakkoset
-    print(maaraa_aakkoset("kesä meni", 3, "FI"))
+
+    print(vigeneren_salaus_brute_force("orzg", "FI"))
