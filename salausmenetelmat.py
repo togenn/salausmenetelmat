@@ -1,3 +1,4 @@
+import numpy as np
 from json import load
 from textwrap import wrap
 from itertools import product
@@ -84,8 +85,8 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
     return c * x, c * y
 
 
-def muuta_numerot_kirjaimiksi(numerot, kieli):
-    salaus = valitse_aakkoset(kieli)
+def muuta_numerot_kirjaimiksi(numerot, aakkoset):
+    salaus = valitse_aakkoset(aakkoset)
 
     palautus = ""
     for nro in numerot:
@@ -95,8 +96,8 @@ def muuta_numerot_kirjaimiksi(numerot, kieli):
     return palautus
 
 
-def muuta_viesti_numeroiksi(viesti, kieli):
-    salaus = valitse_aakkoset(kieli)
+def muuta_viesti_numeroiksi(viesti, aakkoset):
+    salaus = valitse_aakkoset(aakkoset)
     viesti = viesti.lower()
 
     palautus = []
@@ -129,7 +130,7 @@ def caesarin_yhteenlaskumenetelma(viesti, avain, aakkoset, decrypt=False):
     viesti = viesti.lower()
 
     kaannetty_viesti = ""
-    for i, kirjain in enumerate(viesti):
+    for kirjain in viesti:
         if kirjain == " ":
             kaannetty_viesti += " "
             continue
@@ -151,7 +152,7 @@ def caesarin_yhteenlaskumenetelma_brute_force(viesti, aakkoset):
 
     yritykset = []
     for i in range(len(salaus) // 2):
-        yritykset.append([caesarin_yhteenlaskumenetelma(viesti, kieli, i, True), i])
+        yritykset.append([caesarin_yhteenlaskumenetelma(viesti, aakkoset, i, True), i])
 
     taulukko = ""
     for i in yritykset:
@@ -165,7 +166,7 @@ def caesarin_kertolaskumenetelma(viesti, avain, aakkoset, decrypt=False):
     Salaa tai purkaa viestin caesarin kertolaskumenetelmällä. Viestiä avatessa avain ei saa olla jaollinen aakkosten määrällä.
     Salausfunktio f(x) = x * avain
     """
-    valitse_aakkoset(aakkoset)
+    salaus = valitse_aakkoset(aakkoset)
     viesti = viesti.lower()
 
     kaannetty_viesti = ""
@@ -199,7 +200,7 @@ def caesarin_kertolaskumenetelma_brute_force(viesti, aakkoset):
         if syt(i, len(salaus) // 2) != 1:
             continue
 
-        yritykset.append([caesarin_kertolaskumenetelma(viesti, kieli, i, True), i])
+        yritykset.append([caesarin_kertolaskumenetelma(viesti, aakkoset, i, True), i])
 
     taulukko = ""
     for i in yritykset:
@@ -451,6 +452,26 @@ def vigeneren_salaus_brute_force(viesti, kieli):
                     )
 
 
+def matriisisalaus(viesti, avain_a, avain_b, aakkoset, decrypt=False):
+    """
+    Viesti muunnetaan 2 x n matriisiksi ja kerrotaan 2 x 2 matriisilla avain_a, ja siihen 2 x 1 lisätään matriisi avain_b, joka "venytetään" n pituiseksi.
+    """
+
+    if not decrypt:
+        viesti_palat = wrap(viesti, 2)
+        viesti_matriisi = []
+        for pala in viesti_palat:
+            pala_numeroina = muuta_viesti_numeroiksi(pala, aakkoset)
+            if len(pala_numeroina) == 1:
+                pala_numeroina.append(0)
+
+            viesti_matriisi.append(pala_numeroina)
+
+        viesti_matriisi = np.transpose(viesti_matriisi)
+        print(viesti_matriisi)
+
+
+# Viestin muuntaminen toimii TODO salaaminen
 if __name__ == "__main__":
 
-    print(vigeneren_salaus_brute_force("orzg", "FI"))
+    matriisisalaus("kissa", 1, 1, "FI")
