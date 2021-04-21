@@ -468,10 +468,13 @@ def matriisisalaus(viesti, avain_a, avain_b, aakkoset, decrypt=False):
             viesti_matriisi.append(pala_numeroina)
 
         viesti_matriisi = np.transpose(viesti_matriisi)
-        print(viesti_matriisi)
+
+        avain_b = np.repeat(np.repeat(avain_b, 2, 1), len(viesti_matriisi[0]))
+        print(avain_b)
+        salattu = np.dot(avain_a, viesti_matriisi) + avain_b
 
 
 # Viestin muuntaminen toimii TODO salaaminen
 if __name__ == "__main__":
 
-    matriisisalaus("kissa", 1, 1, "FI")
+    matriisisalaus("kissa", [[2, 1], [3, 4]], [1, 1], "FI")
