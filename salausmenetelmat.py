@@ -3,6 +3,7 @@ from json import load
 from textwrap import wrap
 from itertools import product
 
+
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
 SALAUS_FI = {}
@@ -456,25 +457,59 @@ def matriisisalaus(viesti, avain_a, avain_b, aakkoset, decrypt=False):
     """
     Viesti muunnetaan 2 x n matriisiksi ja kerrotaan 2 x 2 matriisilla avain_a, ja siihen 2 x 1 lisätään matriisi avain_b, joka "venytetään" n pituiseksi.
     """
+    salaus = valitse_aakkoset(aakkoset)
+    viesti_palat = wrap(viesti, 2)
+    viesti_matriisi = []
+    for pala in viesti_palat:
+        pala_numeroina = muuta_viesti_numeroiksi(pala, aakkoset)
+        if len(pala_numeroina) == 1:
+            pala_numeroina.append(0)
+
+        viesti_matriisi.append(pala_numeroina)
+
+    viesti_matriisi = np.transpose(viesti_matriisi)
+    avain_b = np.transpose([avain_b] * len(viesti_matriisi[0]))
 
     if not decrypt:
-        viesti_palat = wrap(viesti, 2)
-        viesti_matriisi = []
-        for pala in viesti_palat:
-            pala_numeroina = muuta_viesti_numeroiksi(pala, aakkoset)
-            if len(pala_numeroina) == 1:
-                pala_numeroina.append(0)
+        muunnettu = (np.dot(avain_a, viesti_matriisi) + avain_b) % (len(salaus) // 2)
+    else:
+        kaannetty_avain = kaanteismatriisi(avain_a, len(salaus) // 2)
+        muunnettu = (
+            np.dot(kaannetty_avain, viesti_matriisi) - np.dot(kaannetty_avain, avain_b)
+        ) % (len(salaus) // 2)
 
-            viesti_matriisi.append(pala_numeroina)
+    muunnettu_kirjaimina = ""
+    for i, kirjain in enumerate(muunnettu[0]):
+        muunnettu_kirjaimina += salaus[kirjain]
+        muunnettu_kirjaimina += salaus[muunnettu[1][i]]
 
-        viesti_matriisi = np.transpose(viesti_matriisi)
-
-        avain_b = np.repeat(np.repeat(avain_b, 2, 1), len(viesti_matriisi[0]))
-        print(avain_b)
-        salattu = np.dot(avain_a, viesti_matriisi) + avain_b
+    return muunnettu_kirjaimina
 
 
-# Viestin muuntaminen toimii TODO salaaminen
+def matriisi_salaus_brute_force():
+    pass
+
+
+def kaanteismatriisi(matriisi, n):
+    """
+    Laskee 2 X 2 matriisin käänteismatriisin joukossa z_n
+    """
+
+    det = (matriisi[0][0] * matriisi[1][1] - matriisi[0][1] * matriisi[1][0]) % n
+    kaanteisluku = diofantoksen_yhtalo_ratkaisu(n, det, 1)[1]
+    uusi_matriisi = (
+        kaanteisluku
+        * np.array(
+            [
+                [matriisi[1][1], -1 * matriisi[0][1]],
+                [-1 * matriisi[1][0], matriisi[0][0]],
+            ]
+        )
+        % n
+    )
+    return uusi_matriisi
+
+
 if __name__ == "__main__":
 
-    matriisisalaus("kissa", [[2, 1], [3, 4]], [1, 1], "FI")
+    print(vigeneren_salaus_brute_force("zigvå", "FI"))
