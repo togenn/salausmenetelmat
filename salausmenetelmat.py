@@ -25,9 +25,6 @@ def syt(a, b):
     numero1 = max(a, b)
     numero2 = min(a, b)
 
-    if numero2 == 0:
-        return 0
-
     jakojaannos = numero1 % numero2
 
     while jakojaannos != 0:
@@ -41,7 +38,7 @@ def syt(a, b):
 def diofantoksen_yhtalo_ratkaisu(a, b, c):
     """
     Palauttaa erään ratkaisun yhtälölle ax+by=c , missä a ja b ovat nollasta eroavia kokonaislukuja ja c = syt(a, b):n monikerta.
-    Jos yhtälöllä ei ole ratkaisua tai yhtälö ei täytä ehtoja, niin se palauttaa (None, None).
+    Jos yhtälö ei täytä ehtoja, niin aiheuttaa ValueErrorin.
     """
     syt_ab = syt(a, b)
     c = c // syt_ab
@@ -55,7 +52,7 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
     b = min(apu, b)
 
     if a % b == 0:
-        return None, None
+        raise ValueError("Ei ratkaisua")
 
     jakojaannos = a % b
     bkertoimet = [a // b * -1]
@@ -122,6 +119,15 @@ def valitse_aakkoset(aakkoset):
         return salaus
 
 
+def valitse_sanalista(kieli):
+    if kieli == "FI":
+        return "sanalista_FI.json"
+    elif kieli == "EN":
+        return "sanalista_EN.json"
+    else:
+        raise ValueError("Virheellinen kieli")
+
+
 def caesarin_yhteenlaskumenetelma(viesti, avain, aakkoset, decrypt=False):
     """
     Salaaa tai purkaa viestin caesarin yhteenlaskumenetelmällä.
@@ -153,7 +159,7 @@ def caesarin_yhteenlaskumenetelma_brute_force(viesti, aakkoset):
 
     yritykset = []
     for i in range(len(salaus) // 2):
-        yritykset.append([caesarin_yhteenlaskumenetelma(viesti, aakkoset, i, True), i])
+        yritykset.append([caesarin_yhteenlaskumenetelma(viesti, i, aakkoset, True), i])
 
     taulukko = ""
     for i in yritykset:
@@ -193,19 +199,19 @@ def caesarin_kertolaskumenetelma(viesti, avain, aakkoset, decrypt=False):
 
 
 def caesarin_kertolaskumenetelma_brute_force(viesti, aakkoset):
-    salaus = valitse_aakkoset("")
+    salaus = valitse_aakkoset(aakkoset)
     viesti = viesti.lower()
 
     yritykset = []
+    taulukko = ""
     for i in range(1, len(salaus) // 2):
         if syt(i, len(salaus) // 2) != 1:
             continue
 
-        yritykset.append([caesarin_kertolaskumenetelma(viesti, aakkoset, i, True), i])
-
-    taulukko = ""
-    for i in yritykset:
-        taulukko += "{} avain={}\n".format(i[0], i[1])
+        yritykset.append([caesarin_kertolaskumenetelma(viesti, i, aakkoset, True), i])
+        taulukko += "{} avain={}\n".format(
+            caesarin_kertolaskumenetelma(viesti, i, aakkoset, True), i
+        )
 
     return taulukko
 
@@ -252,7 +258,7 @@ def affini_salaus(viesti, aakkoset, avain_a=1, avain_b=1, decrypt=False):
 
 def affini_salaus_brute_force(viesti, aakkoset):
     """
-    Brute force purkamisen tulos tallentuu brute_force_tulos.txt tiedostoon.
+    Brute forcen tulos tallentuu brute_force_tulos.txt tiedostoon.
     """
     viesti = viesti.replace(" ", "")
 
@@ -280,10 +286,6 @@ def affini_salaus_brute_force(viesti, aakkoset):
                 )
 
 
-def onko_sana(sana, kieli):
-    pass
-
-
 def etsi_sanoja_tuloksesta(kieli):
     if kieli == "EN":
         tiedosto = "sanalista_EN.json"
@@ -304,27 +306,8 @@ def etsi_sanoja_tuloksesta(kieli):
 
                     return taulukko
 
-                pituus = len(viesti)
-
-                if pituus > 21:
-                    pituus = 21
-
-                for i in range(1, pituus + 1):
-                    sana = viesti[0:i]
-                    if sana in sanat:
-                        break
-                else:
-                    continue
-
-                for j in range(1, pituus + 1):
-                    sana2 = viesti[len(viesti) - j : len(viesti)]
-
-                    if sana2 in sanat:
-                        break
-                else:
-                    continue
-
-                taulukko += "{}, löytyi {}, {}\n".format(viesti, avain_a, avain_b)
+                if etsi_sanoja_viestista(viesti, sanat):
+                    taulukko += "{}, löytyi {}, {}\n".format(viesti, avain_a, avain_b)
 
 
 def maaraa_aakkoset(avainsana, siirto, kieli):
@@ -410,12 +393,10 @@ def vigeneren_salaus_brute_force(viesti, kieli):
     """
     if kieli == "FI":
         aakkoset = AAKKOSET_FI
-        tiedosto = "sanalista_FI.json"
     elif kieli == "EN":
         aakkoset = AAKKOSET_EN
-        tiedosto = "sanalista_EN.json"
-    else:
-        raise ValueError("virheellinen kieli")
+
+    tiedosto = valitse_sanalista(kieli)
 
     viesti = viesti.lower().replace(" ", "")
     with open("vigenere_brute_force.txt", "w") as tulos:
@@ -426,31 +407,39 @@ def vigeneren_salaus_brute_force(viesti, kieli):
                 for yhdistelma in product(aakkoset, repeat=pituus):
                     salasana = "".join(yhdistelma)
                     yritys = vigeneren_salaus(viesti, salasana, kieli, True)
-                    pituus = len(yritys)
 
-                    if pituus > 21:
-                        pituus = 21
-
-                    for i in range(1, pituus + 1):
-                        sana = yritys[0:i]
-                        if sana in sanat:
-                            break
-                    else:
-                        continue
-
-                    for j in range(1, pituus + 1):
-                        sana2 = yritys[len(viesti) - j : len(viesti)]
-
-                        if sana2 in sanat:
-                            break
-                    else:
-                        continue
-
-                    tulos.write(
-                        "{} {}\n".format(
-                            vigeneren_salaus(viesti, salasana, kieli, True), salasana
+                    if etsi_sanoja_viestista(yritys, sanat):
+                        tulos.write(
+                            "{} {}\n".format(
+                                vigeneren_salaus(viesti, salasana, kieli, True),
+                                salasana,
+                            )
                         )
-                    )
+
+
+def etsi_sanoja_viestista(viesti, sanat):
+    pituus = len(viesti)
+
+    if pituus > 21:
+        pituus = 21
+
+    for i in range(1, pituus + 1):
+        sana = viesti[0:i]
+
+        if sana in sanat:
+            break
+    else:
+        return False
+
+    for j in range(1, pituus + 1):
+        sana2 = viesti[len(viesti) - j : len(viesti)]
+
+        if sana2 in sanat:
+            break
+    else:
+        return False
+
+    return True
 
 
 def matriisisalaus(viesti, avain_a, avain_b, aakkoset, decrypt=False):
@@ -474,9 +463,13 @@ def matriisisalaus(viesti, avain_a, avain_b, aakkoset, decrypt=False):
         muunnettu = (np.dot(avain_a, viesti_matriisi) + avain_b) % (len(salaus) // 2)
     else:
         kaannetty_avain = kaanteismatriisi(avain_a, len(salaus) // 2)
-        muunnettu = (
-            np.dot(kaannetty_avain, viesti_matriisi) - np.dot(kaannetty_avain, avain_b)
-        ) % (len(salaus) // 2)
+        if not isinstance(kaannetty_avain, bool):
+            muunnettu = (
+                np.dot(kaannetty_avain, viesti_matriisi)
+                - np.dot(kaannetty_avain, avain_b)
+            ) % (len(salaus) // 2)
+        else:
+            raise ValueError("Annetulla matriisilla ei ole käänteismatriisia")
 
     muunnettu_kirjaimina = ""
     for i, kirjain in enumerate(muunnettu[0]):
@@ -486,8 +479,30 @@ def matriisisalaus(viesti, avain_a, avain_b, aakkoset, decrypt=False):
     return muunnettu_kirjaimina
 
 
-def matriisi_salaus_brute_force():
-    pass
+def matriisisalaus_brute_force(viesti, kieli):
+    salaus = valitse_aakkoset(kieli)
+    tiedosto = valitse_sanalista(kieli)
+    numerot = list(range(len(salaus) // 2))
+
+    with open(tiedosto) as sanalista:
+        sanat = load(sanalista)
+        with open("matriisisalaus_brute_force.txt", "w") as tulos:
+            for yrite in product(numerot, repeat=6):
+                try:
+                    avattu_viesti = matriisisalaus(
+                        viesti,
+                        [[yrite[0], yrite[1]], [yrite[2], yrite[3]]],
+                        [yrite[4], yrite[5]],
+                        kieli,
+                        True,
+                    )
+                except ValueError as e:
+                    print(e)
+                    print(yrite)
+                    continue
+
+                if etsi_sanoja_viestista(avattu_viesti, sanat):
+                    tulos.write("{} {}\n".format(avattu_viesti, yrite))
 
 
 def kaanteismatriisi(matriisi, n):
@@ -496,7 +511,11 @@ def kaanteismatriisi(matriisi, n):
     """
 
     det = (matriisi[0][0] * matriisi[1][1] - matriisi[0][1] * matriisi[1][0]) % n
+    if det == 0:
+        return False
+
     kaanteisluku = diofantoksen_yhtalo_ratkaisu(n, det, 1)[1]
+
     uusi_matriisi = (
         kaanteisluku
         * np.array(
@@ -507,9 +526,10 @@ def kaanteismatriisi(matriisi, n):
         )
         % n
     )
+
     return uusi_matriisi
 
 
 if __name__ == "__main__":
 
-    print(vigeneren_salaus_brute_force("zigvå", "FI"))
+    print(matriisisalaus_brute_force("yzcujz", "FI"))
