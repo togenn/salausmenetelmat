@@ -496,9 +496,7 @@ def matriisisalaus_brute_force(viesti, kieli):
                         kieli,
                         True,
                     )
-                except ValueError as e:
-                    print(e)
-                    print(yrite)
+                except ValueError:
                     continue
 
                 if etsi_sanoja_viestista(avattu_viesti, sanat):
@@ -530,6 +528,34 @@ def kaanteismatriisi(matriisi, n):
     return uusi_matriisi
 
 
+def paloittelumenetelma(viesti, avain, aakkoset, z):
+    """
+    n = kirjainten lukumaara - 1
+    Etsitään mahdollisimman suuri k siten, että kun kirjoitetaann luku n k kertaa peräkkäin, niin luku on pienempi kuin jäännösluokka z.
+    Sitten viesti jaetaan k:n pituisiin osiin, jotka tulkitaan yhtenä lukuna, jotka taas kerrotaan avaimella ja salataan viesti.
+    """
+    salaus = valitse_aakkoset(aakkoset)
+    n = len(salaus) // 2 - 1
+    k = 0
+    m = 0
+
+    while m < z:
+        k += 1
+        m = int(str(n) * k)
+
+    k -= 1
+
+    if k == 0:
+        raise ValueError("Liian pieni z:n arvo.")
+
+    viesti = viesti.lower().replace(" ", "")
+    osat = [
+        viesti[i : i + len(viesti) // k]
+        for i in range(0, len(viesti), len(viesti) // k)
+    ]
+    print(osat)
+
+
 if __name__ == "__main__":
 
-    print(matriisisalaus_brute_force("yzcujz", "FI"))
+    paloittelumenetelma("vihreää", 1, "FI", 306471)
