@@ -3,6 +3,8 @@ from json import load
 from textwrap import wrap
 from itertools import product
 
+from timeit import timeit
+
 
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
@@ -96,7 +98,7 @@ def muuta_numerot_kirjaimiksi(numerot, aakkoset):
 
 def muuta_viesti_numeroiksi(viesti, aakkoset):
     salaus = valitse_aakkoset(aakkoset)
-    viesti = viesti.lower()
+    viesti = viesti.lower().replace(" ", "")
 
     palautus = []
     for kirjain in viesti:
@@ -528,34 +530,177 @@ def kaanteismatriisi(matriisi, n):
     return uusi_matriisi
 
 
-def paloittelumenetelma(viesti, avain, aakkoset, z):
+def paloittelumenetelma(viesti, avain, aakkoset, z, decrypt=False):
     """
     n = kirjainten lukumaara - 1
     Etsitään mahdollisimman suuri k siten, että kun kirjoitetaann luku n k kertaa peräkkäin, niin luku on pienempi kuin jäännösluokka z.
     Sitten viesti jaetaan k:n pituisiin osiin, jotka tulkitaan yhtenä lukuna, jotka taas kerrotaan avaimella ja salataan viesti.
+    Salattu viesti syötetään merkkijonona.
     """
     salaus = valitse_aakkoset(aakkoset)
     n = len(salaus) // 2 - 1
     k = 0
-    m = 0
+    temp = 0
 
-    while m < z:
+    while temp < z:
         k += 1
-        m = int(str(n) * k)
+        temp = int(str(n) * k)
 
     k -= 1
 
-    if k == 0:
+    if k < 1:
         raise ValueError("Liian pieni z:n arvo.")
 
-    viesti = viesti.lower().replace(" ", "")
-    osat = [
-        viesti[i : i + len(viesti) // k]
-        for i in range(0, len(viesti), len(viesti) // k)
-    ]
-    print(osat)
+    if not decrypt:
+        viesti = viesti.lower().replace(" ", "")
+        osat = wrap(viesti, k)
+        osat_numeroina = []
+        for osa in osat:
+            osa = muuta_viesti_numeroiksi(osa, aakkoset)
+            osa = [str(numero).zfill(k) for numero in osa]
+            osa = "".join(osa)
+            osat_numeroina.append(int(osa))
+    else:
+        osat_numeroina = [int(osa) for osa in wrap(viesti, k * 2)]
+
+    if decrypt:
+        avain = diofantoksen_yhtalo_ratkaisu(z, avain, 1)[1]
+
+    muunnettu = [str(osa * avain % z).zfill(k * 2) for osa in osat_numeroina]
+
+    if decrypt:
+        kirjaimet = ""
+        for osa in muunnettu:
+            osat = wrap(str(osa), k)
+            osat = [int(numero) for numero in osat]
+            kirjaimet += muuta_numerot_kirjaimiksi(osat, aakkoset)
+
+        return kirjaimet
+
+    return muunnettu
+
+
+def kantamenetelma(viesti, avain, aakkoset, z, decrypt=False):
+    """
+    Valitaan mahdollisimman iso k siten, että len(aakkoset) ** k < z.
+    Viesti jaetaan k pituisiin paloihin ja palat esitetään muodossa kirjain1 * len(aakkoset) ** (k - 1) + kirjain2 * len(aakkoset) ** (k - 2) + ... + kirjain_n * 1
+    Palat kerrotaan avaimella ja palat esitetään len(aakkoset) kantaisena lukuna, jolloin salattu viesti voidaan esittää tekstinä.
+    """
+    salaus = valitse_aakkoset(aakkoset)
+    kirjaimien_maara = len(salaus) // 2
+    k = 0
+
+    while kirjaimien_maara ** k < z:
+        k += 1
+
+    k -= 1
+
+    if k < 1:
+        raise ValueError("Liian pieni z:n arvo.")
+
+    viesti_numeroina = muuta_viesti_numeroiksi(viesti, aakkoset)
+
+    if decrypt:
+        avain = diofantoksen_yhtalo_ratkaisu(z, avain, 1)[1]
+        potenssi = k
+    else:
+        potenssi = k - 1
+
+    muunnetut_osat = []
+    viesti_numeroina_iter = iter(viesti_numeroina)
+    for i in range(len(viesti_numeroina) // k + 1):
+        summa = 0
+        try:
+            for j in range(potenssi, -1, -1):
+
+                summa += kirjaimien_maara ** j * next(viesti_numeroina_iter)
+        except StopIteration:
+            break
+
+        muunnetut_osat.append(summa * avain % z)
+
+    if decrypt:
+        potenssi2 = k - 1
+    else:
+        potenssi2 = k
+
+    muunnettu_viesti = ""
+    for numero in muunnetut_osat:
+        muunnettu_viesti += muuta_numerot_kirjaimiksi(
+            kantamenetelma_kertoimet(numero, potenssi2, kirjaimien_maara), aakkoset
+        )
+
+    return muunnettu_viesti
+
+
+def kantamenetelma_kertoimet(numero, k, kanta):
+    kertoimet = []
+    summa = 0
+    for i in range(k, -1, -1):
+        kerroin = (numero - summa) // kanta ** i
+        summa += kerroin * kanta ** i
+        kertoimet.append(kerroin)
+
+    return kertoimet
+
+
+def RSA_salaus(data, avain, n):
+    """
+    Avain on joko julkinen avain tai dekryptauseksponentti riippuen siitä salataanko vai avataanko dataa.
+    """
+
+    salattu_data = potenssiinkorotus_joukossa_z(data, avain, n)
+    return salattu_data
+
+
+def RSA_salaus_allekirjoituksella(
+    data,
+    julkinen_avain,
+    dekryptauseksponentti,
+    n_a,
+    n_b,
+    decrypt=False,
+    allekirjoitus=None,
+):
+    """
+    a = lähettäjä
+    b = vastaanottaja
+    n_a < n_b
+    """
+    if not decrypt:
+        salattu_data = RSA_salaus(data, julkinen_avain, n_b)
+        allekirjoitus = RSA_salaus(data, dekryptauseksponentti, n_a)
+        salattu_allekirjoitus = RSA_salaus(allekirjoitus, julkinen_avain, n_b)
+
+        return salattu_data, salattu_allekirjoitus
+
+    avattu_data = RSA_salaus(data, dekryptauseksponentti, n_b)
+    avattu_allekirjoitus = RSA_salaus(allekirjoitus, dekryptauseksponentti, n_b)
+    vahvistettu_allekirjoitus = RSA_salaus(avattu_allekirjoitus, julkinen_avain, n_a)
+
+    return avattu_data, avattu_data == vahvistettu_allekirjoitus
+
+
+def potenssiinkorotus_joukossa_z(kantaluku, eksponentti, z):
+    eksponentti_binaari = bin(eksponentti).lstrip("0b")
+
+    pituus = len(eksponentti_binaari)
+    tulo = 1
+
+    for i in range(pituus):
+        if eksponentti_binaari[pituus - i - 1] == "1":
+            tulo = tulo * kantaluku % z
+
+        kantaluku = kantaluku ** 2 % z
+
+    return tulo
+
+
+def laske_dekryptauseksponentti(alkuluku1, alkuluku2, julkinen_avain):
+    n = (alkuluku1 - 1) * (alkuluku2 - 1)
+    return diofantoksen_yhtalo_ratkaisu(n, julkinen_avain, 1)[1] % n
 
 
 if __name__ == "__main__":
 
-    paloittelumenetelma("vihreää", 1, "FI", 306471)
+    print(RSA_salaus_allekirjoituksella(128, 5, 103, 119, 143, True, 98))
