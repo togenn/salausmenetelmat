@@ -1,7 +1,10 @@
+import math
 import numpy as np
 from json import load
 from textwrap import wrap
 from itertools import product
+from sympy.ntheory import qs
+
 
 from timeit import timeit
 
@@ -43,7 +46,7 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
     Jos yhtälö ei täytä ehtoja, niin aiheuttaa ValueErrorin.
     """
     syt_ab = syt(a, b)
-    c = c // syt_ab
+    c = math.ceil(c / syt_ab)
     if b > a:
         kaanna = True
     else:
@@ -698,9 +701,145 @@ def potenssiinkorotus_joukossa_z(kantaluku, eksponentti, z):
 
 def laske_dekryptauseksponentti(alkuluku1, alkuluku2, julkinen_avain):
     n = (alkuluku1 - 1) * (alkuluku2 - 1)
+
     return diofantoksen_yhtalo_ratkaisu(n, julkinen_avain, 1)[1] % n
+
+
+def murra_rsa(n, julkinen_avain):
+    """
+    Toimii, kun n on korkeintaan 100 merkkiä pitkä.
+    Jakaa n:n käyttämällä neliöseulaa SymPy moduulista.
+    """
+    tekijat = list(
+        qs(
+            n,
+            2000,
+            10000,
+        )
+    )
+
+    return laske_dekryptauseksponentti(tekijat[0], tekijat[1], julkinen_avain)
+
+
+def kryptausiteraatio(salattu_data, julkinen_avain, n, toistot):
+    """
+    Yrittää dekryptata datan kryptausfunktio-iteraatioilla.
+    """
+    muunnettu_data = salattu_data
+    for i in range(toistot):
+        edellinen = muunnettu_data
+        muunnettu_data = potenssiinkorotus_joukossa_z(muunnettu_data, julkinen_avain, n)
+        if muunnettu_data == salattu_data:
+            return edellinen
+
+
+def diffie_hellman_avaimenvaihto(salainen_avain_a, julkinen_avain_b, z):
+    """
+    Palauttaa käyttäjien a ja b yhteisen salausavaimen.
+    """
+    return potenssiinkorotus_joukossa_z(julkinen_avain_b, salainen_avain_a, z)
+
+
+def diffie_hellman_julkinen_avain(generaattori, eksponentti, z):
+
+    return potenssiinkorotus_joukossa_z(generaattori, eksponentti, z)
+
+
+def elgamal_salaus(data, yhteinen_avain, z, decrypt=False):
+    """
+    Viesti kerrotaan yhteisellä avaimella.
+    Avatessa käytetään yhteisen avaimen käänteisalkiota.
+    """
+    if decrypt:
+        yhteinen_avain = diofantoksen_yhtalo_ratkaisu(z, yhteinen_avain, 1)[1] % z
+
+    return data * yhteinen_avain % z
+
+
+def selkareppu(
+    data,
+    julkinen_avain=None,
+    decrypt=False,
+    z=None,
+    salainen_avain=None,
+    salainen_avain_luku=None,
+):
+    """
+    Jokaisen käyttäjän salainen avain on superkasvava numerojono, eli seuraavan jonon jäsenen arvo on suurempi kuin edellisten jäsenien summa.
+    Julkinen avain saadaan, kun salainen avain kerrotaan jollain salaisella luvulla (mod z).
+    Data esitetään binäärimuodossa ja kerrotaan vastaavat ykköset julkisen avaimen vastaavalla numerolla ja summataan yhteen.
+    """
+    summa = 0
+
+    if not decrypt:
+        data = bin(data).lstrip("0b")
+        for i, bitti in enumerate(data):
+            if bitti == "1":
+                summa += julkinen_avain[i]
+
+        return summa
+
+    salainen_avain_luku = diofantoksen_yhtalo_ratkaisu(z, salainen_avain_luku, 1)[1] % z
+    data = salainen_avain_luku * data % z
+    salainen_avain.reverse()
+    binaari_data = ""
+    for luku in salainen_avain:
+        if data - summa >= luku:
+            binaari_data += "1"
+            summa += luku
+        else:
+            binaari_data += "0"
+
+    avattu = 0
+    for i, bitti in enumerate(binaari_data):
+        if bitti == "1":
+            avattu += 2 ** i
+
+    return avattu
+
+
+def selkareppu_julkinen_avain(salainen_avain, salainen_avain_luku, z):
+    julkinen_avain = []
+    for luku in salainen_avain:
+        julkinen_avain.append(luku * salainen_avain_luku % z)
+
+    return julkinen_avain
+
+
+def murra_selkareppu(julkinen_avain, salattu_data):
+    """"""
+    julkinen_avain.append(-1 * salattu_data)
+    matriisi = np.identity(len(julkinen_avain))
+    matriisi[-1] = julkinen_avain
+    vektorit = np.transpose(matriisi)
+    print(matriisi)
+
+
+def lll_algoritmi(vektorit):
+    indeksi = 0
+    while True:
+        v
+
+
+def gram_schimdt_vektori(kasiteltava_vektori, gram_schmidt_vektorit):
+    ensimmainen = gram_schmidt_vektorit.pop(-1)
+    summa_vektori = np.dot(
+        np.dot(kasiteltava_vektori, ensimmainen) / np.dot(ensimmainen, ensimmainen),
+        ensimmainen,
+    )
+
+    if len(gram_schmidt_vektorit) == 0:
+        return kasiteltava_vektori - summa_vektori
+
+    for vektori in gram_schmidt_vektorit:
+        uusi_vektori = np.dot(
+            np.dot(kasiteltava_vektori, vektori) / np.dot(vektori, vektori), vektori
+        )
+        summa_vektori -= uusi_vektori
+
+    return summa_vektori
 
 
 if __name__ == "__main__":
 
-    print(RSA_salaus_allekirjoituksella(128, 5, 103, 119, 143, True, 98))
+    print(gram_schimdt_vektori([1648, 297], [[201, 37]]))
