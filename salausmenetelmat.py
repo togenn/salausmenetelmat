@@ -5,7 +5,6 @@ from textwrap import wrap
 from itertools import product
 from sympy.ntheory import qs
 
-import olll
 
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
