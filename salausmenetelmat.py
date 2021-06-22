@@ -5,6 +5,8 @@ from textwrap import wrap
 from itertools import product
 from sympy.ntheory import qs
 
+import olll
+
 AAKKOSET_FI = "abcdefghijklmnopqrstuvwxyzåäö"
 AAKKOSET_EN = "abcdefghijklmnopqrstuvwxyz"
 SALAUS_FI = {}
@@ -481,6 +483,9 @@ def matriisisalaus(viesti, avain_a, avain_b, aakkoset, decrypt=False):
 
 
 def matriisisalaus_brute_force(viesti, kieli):
+    """
+    Tallentaa tuloksen "matriisisalaus_brute_force.txt tiedostoon.
+    """
     salaus = valitse_aakkoset(kieli)
     tiedosto = valitse_sanalista(kieli)
     numerot = list(range(len(salaus) // 2))
@@ -803,36 +808,46 @@ def selkareppu_julkinen_avain(salainen_avain, salainen_avain_luku, z):
 
 
 def murra_selkareppu(julkinen_avain, salattu_data):
-    """"""
-    julkinen_avain.append(-1 * salattu_data)
-    matriisi = np.identity(len(julkinen_avain))
-    matriisi[-1] = julkinen_avain
+    """
+    Yrittää murtaa selkärepun lll-algoritmilla.
+    http://www.cs.sjsu.edu/faculty/stamp/papers/topics/topic16/Knapsack.pdf
+    """
+    julkinen_avain_kopio = julkinen_avain.copy()
+    julkinen_avain_kopio.append(-1 * salattu_data)
+    matriisi = np.identity(len(julkinen_avain_kopio))
+    matriisi[-1] = julkinen_avain_kopio
     vektorit = np.transpose(matriisi)
-
     lll_muunnetut_vektorit = lll_algoritmi(vektorit)
-    print(lll_muunnetut_vektorit)
+
+    for vektori in lll_muunnetut_vektorit:
+        for numero in vektori:
+            if numero not in [0, 1]:
+                break
+        else:
+            vektori = list(map(str, vektori.astype(int)))
+            data = "".join(vektori)
+
+            return int(data, 2)
+
+    return "murtaminen ei onnistunut"
 
 
 def lll_algoritmi(vektorit):
-
+    vektorit = np.array(vektorit)
     indeksi = 1
     while indeksi < len(vektorit):
-        gram_schimdt_vektorit = [vektorit[0]]
+        gram_schimdt_vektorit = laske_gram_schimdt_vektorit(vektorit, indeksi)
         vahennetty_vektori = vektorit[indeksi]
-        for i in range(indeksi):
-            gram_schimdt_vektorit.append(
-                gram_schimdt_vektori(vektorit[i + 1], gram_schimdt_vektorit)
+        for i in range(indeksi - 1, -1, -1):
+            kerroin = np.dot(vektorit[indeksi], gram_schimdt_vektorit[i]) / np.dot(
+                gram_schimdt_vektorit[i], gram_schimdt_vektorit[i]
             )
-            vahennetty_vektori = vahenna_vektorit(
-                vektorit[i], vahennetty_vektori, gram_schimdt_vektorit[i]
-            )
-
-        # print(gram_schimdt_vektorit)
-        # print(vektorit)
-
-        vektorit[indeksi] = vahennetty_vektori
-
-        # print(vektorit)
+            if abs(kerroin) > 0.5:
+                vahennetty_vektori = vahenna_vektorit(
+                    vektorit[i], vahennetty_vektori, gram_schimdt_vektorit[i]
+                )
+                vektorit[indeksi] = vahennetty_vektori
+                gram_schimdt_vektorit = laske_gram_schimdt_vektorit(vektorit, indeksi)
 
         if lovasz_ehto(
             vahennetty_vektori,
@@ -840,18 +855,12 @@ def lll_algoritmi(vektorit):
             gram_schimdt_vektorit[indeksi],
         ):
             indeksi += 1
-        else:
 
+        else:
             vektorit[[indeksi, indeksi - 1]] = vektorit[[indeksi - 1, indeksi]]
             indeksi = max([1, indeksi - 1])
-            # print(False, indeksi)
 
     return vektorit
-
-
-def lll_algoritmi2(vektorit):
-    while True:
-        pass
 
 
 def vahenna_vektorit(v1, v2, v1_gram_schimdt_vektori):
@@ -877,8 +886,9 @@ def lovasz_ehto(v2, v1_gram_schimdt, v2_gram_schimdt):
     return v2_suuruus >= (0.75 - kerroin ** 2) * v1_suuruus
 
 
-def gram_schimdt_vektori(kasiteltava_vektori, gram_schmidt_vektorit):
+def laske_gram_schimdt_vektori(kasiteltava_vektori, gram_schmidt_vektorit):
     alku_vektori = np.array(kasiteltava_vektori).astype(float)
+    kasiteltava_vektori = alku_vektori
     for vektori in gram_schmidt_vektorit:
         vektori = np.array(vektori).astype(float)
         uusi_vektori = (
@@ -891,9 +901,21 @@ def gram_schimdt_vektori(kasiteltava_vektori, gram_schmidt_vektorit):
     return alku_vektori
 
 
+def laske_gram_schimdt_vektorit(vektorit, indeksi):
+    """
+    Laskee gram-schmidt vektorit tiettyyn indeksiin asti.
+    """
+    vektorit = np.array(vektorit[0 : indeksi + 1])
+    gram_schimdt_vektorit = []
+    for vektori in vektorit:
+        vektori = np.array(vektori).astype(float)
+        gram_schimdt_vektorit.append(
+            laske_gram_schimdt_vektori(vektori, gram_schimdt_vektorit)
+        )
+
+    return gram_schimdt_vektorit
+
+
 if __name__ == "__main__":
 
-    murra_selkareppu([82, 123, 287, 83, 248, 373, 10, 471], 548)
-    # print(lll_algoritmi([[46, 15, 3], [15, 23, 11], [32, 1, 1]]))
-    # print(np.dot([1, 0, 0, 0, 0, 0, 0, 0, 82], [0, 1, 0, 0, 0, 0, 0, 0, 123]))
-    # print(round(1.5))
+    print(murra_selkareppu([82, 123, 287, 83, 248, 373, 10, 471], 548))
