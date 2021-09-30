@@ -44,10 +44,7 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
     """
     syt_ab = syt(a, b)
     c = math.ceil(c / syt_ab)
-    if b > a:
-        kaanna = True
-    else:
-        kaanna = False
+    kanna = bool(b > a)
 
     apu = a
     a = max(a, b)
@@ -78,9 +75,7 @@ def diofantoksen_yhtalo_ratkaisu(a, b, c):
         i += 1
 
     if kaanna:
-        apu = x
-        x = y
-        y = apu
+        x, y = y, x
 
     return c * x, c * y
 
@@ -226,7 +221,7 @@ def kirjaimien_frekvenssi(viesti):
     viesti = viesti.lower()
     viesti = viesti.replace(" ", "")
     for kirjain in viesti:
-        if not kirjain in kirjaimet.keys():
+        if kirjain not in kirjaimet.keys():
             kirjaimet[kirjain] = 1
         else:
             kirjaimet[kirjain] += 1
@@ -401,29 +396,28 @@ def vigeneren_salaus_brute_force(viesti, kieli):
     tiedosto = valitse_sanalista(kieli)
 
     viesti = viesti.lower().replace(" ", "")
-    with open("vigenere_brute_force.txt", "w") as tulos:
-        with open(tiedosto) as sanat_tiedosto:
-            sanat = load(sanat_tiedosto)
+    with open("vigenere_brute_force.txt", "w") as tulos, open(tiedosto) as sanat_tiedosto:
+        
+        sanat = load(sanat_tiedosto)
 
-            for pituus in range(1, len(viesti) + 1):
-                for yhdistelma in product(aakkoset, repeat=pituus):
-                    salasana = "".join(yhdistelma)
-                    yritys = vigeneren_salaus(viesti, salasana, kieli, True)
+        for pituus in range(1, len(viesti) + 1):
+            for yhdistelma in product(aakkoset, repeat=pituus):
+                salasana = "".join(yhdistelma)
+                yritys = vigeneren_salaus(viesti, salasana, kieli, True)
 
-                    if etsi_sanoja_viestista(yritys, sanat):
-                        tulos.write(
-                            "{} {}\n".format(
-                                vigeneren_salaus(viesti, salasana, kieli, True),
-                                salasana,
-                            )
+                if etsi_sanoja_viestista(yritys, sanat):
+                    tulos.write(
+                        "{} {}\n".format(
+                            vigeneren_salaus(viesti, salasana, kieli, True),
+                            salasana,
                         )
+                    )
 
 
 def etsi_sanoja_viestista(viesti, sanat):
     pituus = len(viesti)
 
-    if pituus > 21:
-        pituus = 21
+    pituus = min(21, pituus)
 
     for i in range(1, pituus + 1):
         sana = viesti[0:i]
@@ -731,6 +725,8 @@ def kryptausiteraatio(salattu_data, julkinen_avain, n, toistot):
         muunnettu_data = potenssiinkorotus_joukossa_z(muunnettu_data, julkinen_avain, n)
         if muunnettu_data == salattu_data:
             return edellinen
+
+    return None 
 
 
 def diffie_hellman_avaimenvaihto(salainen_avain_a, julkinen_avain_b, z):
